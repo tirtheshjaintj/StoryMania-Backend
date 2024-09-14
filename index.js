@@ -11,8 +11,8 @@ const media=require("./routes/media.route");
 const storyRoutes = require('./routes/story.route');
 const characterRoutes = require('./routes/character.route');
 //MiddleWaress
-// app.use(cors());
-app.use(cors({credentials: true}));
+app.use(cors());
+// app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended:true}))
 app.use(express.json());
