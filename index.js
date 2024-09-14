@@ -29,7 +29,7 @@ app.use("/api/user",user);
 //Media Routes
 app.use("/api/media",media);
 // Use the groqRoutes
-app.use('/groqBot', groqRoutes);
+app.use('/api/groqBot', groqRoutes);
 
 //Stories and Character Routes
 app.use('/api/story', storyRoutes);
