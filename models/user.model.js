@@ -32,7 +32,8 @@ const userSchema = new mongoose.Schema({
         return /^[0-9]{10}$/.test(v);
       },
       message: props => `${props.value} is not a valid phone number! It should contain exactly 10 digits.`
-    }
+    },
+    unique:true
   },
   address: {
     type: String,
@@ -58,7 +59,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     validate: {
       validator: function (val) {
-        return val.length == 6;
+        return  !val || val.length == 6;
       },
       message: () => `OTP must be 6 digits`
     }
@@ -67,7 +68,19 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
     required: true
+  },
+  google_id: {
+    type: String,
+    validate: {
+      validator: function (v) {
+        return v === null || /^\d{21}$/.test(v);
+      },
+      message: props => `Not Valid Google ID`
+    },
+    unique: true,
+    sparse: true // Allows multiple `null` values
   }
+ 
 },{timestamps:true});
 
 // Middleware to hash password and generate OTP before saving

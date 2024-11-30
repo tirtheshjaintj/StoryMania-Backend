@@ -3,7 +3,7 @@ const Media = require('../models/media.model'); // Add this to handle media sepa
 const User=require("../models/user.model");
 const { validationResult } = require('express-validator');
 const uploadToCloudinary = require('../helpers/cloud.helper'); // Cloudinary helper for image uploads
-const { default: mongoose } = require('mongoose');
+const mongoose = require('mongoose');
 
 exports.getStory = async (req, res) => {
     try {
@@ -160,6 +160,7 @@ exports.createStory = async (req, res) => {
                 story_id: newStory._id,
                 images: imageUrls
             });
+            
             await media.save();
         }
 

@@ -5,59 +5,6 @@ const sendMail = require('../helpers/mail.helper');
 const crypto = require('crypto');
 const Story = require('../models/story.model'); // Adjust the path as necessary
 const Media = require('../models/media.model'); // Adjust the path as necessary
-const { search } = require('../routes/story.route');
-
-
-const signup = async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ status: false, message: errors.array()[0].msg });
-    }
-
-    const { name, email, phone_number, address, password } = req.body;
-    const otp = crypto.randomInt(100000, 999999).toString(); // Generate OTP
-
-    try {
-        // Check if the user with the given email already exists and is verified
-        const existingUser = await User.findOne({ email, verified: true });
-        if (existingUser) {
-            return res.status(400).json({ status: false, message: 'User already exists with this email.' });
-        }
-
-        // Check if the user with the given phone number already exists and is verified
-        const existingUser2 = await User.findOne({ phone_number, verified: true });
-        if (existingUser2) {
-            return res.status(400).json({ status: false, message: 'User already exists with this phone number.' });
-        }
-
-        let user;
-        const newUser = await User.findOne({ email, verified: false });
-
-        if (!newUser) {
-            user = await User.create({ name, email, phone_number, address, password, otp });
-        } else {
-            // Update existing useer
-            newUser.phone_number = phone_number;
-            newUser.address = address;
-            newUser.otp = otp; // Set OTP
-            newUser.password = password;
-            await newUser.save();
-            user = newUser;
-        }
-
-        const mailStatus = await sendMail('IMP: Your OTP Code', email, `Your OTP code is ${otp}`);
-        if (mailStatus) {
-    // Respond with success and the created user
-            res.status(201).json({ status: true, message: 'Verification is Needed!', user });
-        } else {
-            res.status(500).json({ status: false, message: 'Failed to send OTP.' });
-        }
-
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ status: false, message: 'Internal Server Error' });
-    }
-};
 
 const searchUsers = async (req, res) => {
     const errors = validationResult(req);
@@ -121,6 +68,129 @@ const login = async (req, res) => {
         res.status(500).json({ status: false, message: 'Internal Server Error' });
     }
 };
+
+const signup = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ status: false, message: errors.array()[0].msg });
+    }
+
+    const { name, email, phone_number, address, password } = req.body;
+    const otp = crypto.randomInt(100000, 999999).toString(); // Generate OTP
+
+    try {
+        // Check if the user with the given email already exists and is verified
+        const existingUser = await User.findOne({ email, verified: true });
+        if (existingUser) {
+            return res.status(400).json({ status: false, message: 'User already exists with this email.' });
+        }
+
+        // Check if the user with the given phone number already exists and is verified
+        const existingUser2 = await User.findOne({ phone_number, verified: true });
+        if (existingUser2) {
+            return res.status(400).json({ status: false, message: 'User already exists with this phone number.' });
+        }
+
+        let user;
+        const newUser = await User.findOne({ email, verified: false });
+
+        if (!newUser) {
+            user = await User.create({ name, email, phone_number, address, password, otp });
+        } else {
+            // Update existing useer
+            newUser.phone_number = phone_number;
+            newUser.address = address;
+            newUser.otp = otp; // Set OTP
+            newUser.password = password;
+            await newUser.save();
+            user = newUser;
+        }
+
+        const mailStatus = await sendMail('IMP: Your OTP Code', email, `Your OTP code is ${otp}`);
+        if (mailStatus) {
+    // Respond with success and the created user
+            res.status(201).json({ status: true, message: 'Verification is Needed!', user });
+        } else {
+            res.status(500).json({ status: false, message: 'Failed to send OTP.' });
+        }
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: false, message: 'Internal Server Error' });
+    }
+};
+
+const google_login = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ status: false, message: errors.array()[0].msg });
+    }
+
+    const { email, google_id, name } = req.body;
+
+    try {
+        // Check if the user exists
+        let user = await User.findOne({email});
+
+        if (!user) {
+            // Generate random details for signup
+            const randomPassword = Math.random().toString(36).slice(-8); // Random strong password of length 8
+            const randomPhoneNumber = `9${Math.floor(100000000 + Math.random() * 900000000)}`; // Random unique 10-digit phone number
+            const dummyAddress = "Dummy Address, Not Provided";
+            // Create a new user with the provided Google ID and other dummy details
+            user = await User.create({
+                name,
+                email,
+                google_id,
+                phone_number: randomPhoneNumber,
+                address: dummyAddress,
+                password: randomPassword,
+                verified: true, // Mark user as verified since logged in with Google
+            });
+            // Optionally, send a welcome email with login details (optional step)
+            const welcomeMailStatus = await sendMail(
+                "Welcome to Our Service!",
+                email,
+                `Dear ${name},\n\nYour account has been successfully created via Google Login.\n\nLogin Details:\nEmail: ${email}\nTemporary Password: ${randomPassword}\n\nPlease change your password after login.`
+            );
+            if (!welcomeMailStatus) {
+                console.error("Failed to send welcome email.");
+            }
+        } else {
+            // If the user exists, validate Google ID
+            if (user.google_id && user.google_id !== google_id) {
+                return res.status(400).json({ status: false, message: 'Invalid Google ID' });
+            }
+            // Associate the Google ID with the user
+            user.google_id = google_id;
+            await user.save();
+            const token = setUser(user);
+
+            res.status(200).json({ status: true, message: 'Login successful!', token });
+        }
+        
+        user.otp=null;
+        user.verified=true;
+        await user.save();
+        // Generate JWT token for the user
+        const token = setUser(user);
+        // Notify user about login via email (optional step)
+        const mailStatus = await sendMail(
+            'IMP: You Logged In on a New Device',
+            email,
+            `Dear ${name},\n\nYour account has been logged in on a new device.\n\nIf this wasn't you, please contact our support team immediately.`
+        );
+        if (!mailStatus) {
+            console.error("Failed to send login notification email.");
+        }
+        // Respond with success
+        res.status(200).json({ status: true, message: 'Login successful!', token });
+    } catch (error) {
+        console.error("Google Login Error:", error);
+        res.status(500).json({ status: false, message: 'Internal Server Error' });
+    }
+};
+
 
 const updateUser = async (req, res) => {
     const errors = validationResult(req);
@@ -273,5 +343,6 @@ module.exports = {
     resendOtp,
     getUser,
     getStories,
-    searchUsers
+    searchUsers,
+    google_login
 };
