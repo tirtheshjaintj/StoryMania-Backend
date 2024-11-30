@@ -164,11 +164,8 @@ const google_login = async (req, res) => {
             // Associate the Google ID with the user
             user.google_id = google_id;
             await user.save();
-            const token = setUser(user);
-
-            res.status(200).json({ status: true, message: 'Login successful!', token });
         }
-        
+
         user.otp=null;
         user.verified=true;
         await user.save();
